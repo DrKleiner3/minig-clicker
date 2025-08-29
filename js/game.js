@@ -1,7 +1,6 @@
 // js/game.js
-// Orchestrierung der Runde: Stage laden, Biome anwenden, Map bauen,
-// Timer/Mining starten, am Ende speichern & zur Upgrade-Seite wechseln.
-// Phase 2.2+: Boss-Flow verdrahtet + (2.3) Ring visuell gecappt & Boss-Sofort-Ende.
+// Runden-Orchestrierung: Stage/Biom anwenden, Map bauen, Timer/Mining/Boost-Tick steuern,
+// Rundenende speichern → Upgrades. Enthält Boss-Flow + Ring-Cap + Boss-Abbruch-Fix + 3.0-Regen/Boost-Tick.
 
 import {
   TILE_SIZE,
@@ -12,7 +11,13 @@ import {
   setTimeLeft,
   setBiome as setBiomeState,
   getStonesRemaining,
-  MAX_RADIUS,                 // <-- neu: für visuellen Ring-Cap
+  MAX_RADIUS,
+
+  // Phase 3.0 – Level/Boost
+  BOOST_TICK_MS,
+  tickBoostsAndRegen,
+  getLevelBoostSavePatch,
+  resetStonesThisRound,
 } from "./state.js";
 
 import {
@@ -41,8 +46,9 @@ let mouseX = 0;
 let mouseY = 0;
 let rafId = null;
 let aoeInterval = null;
+let boostInterval = null;   // ← NEU: Boost-/Regen-Tick
 let gameRunning = true;
-let isTransitioning = false; // schützt vor "paused"-Überschreiben beim Seitenwechsel
+let isTransitioning = false;
 
 /* ---------------------------------
  * Mausposition tracken
@@ -53,7 +59,7 @@ document.addEventListener("mousemove", (e) => {
 });
 
 /* ---------------------------------
- * Ring-Animation (visuell gecappter Radius)
+ * Ring-Animation (visuell gecappt)
  * --------------------------------*/
 function animateRing(radiusCircleEl) {
   const levelRadius = Math.min(Number(upgrades.radius || 0), MAX_RADIUS);
@@ -69,46 +75,38 @@ function animateRing(radiusCircleEl) {
  * Rundenende → speichern + Upgrades
  * --------------------------------*/
 function endRound(context) {
-  if (isTransitioning) return; // Mehrfachaufruf verhindern
+  if (isTransitioning) return;
 
   // Loops stoppen
   gameRunning = false;
   if (rafId) cancelAnimationFrame(rafId);
   if (aoeInterval) clearInterval(aoeInterval);
-
-  // Seitenwechsel: beforeunload nichts mehr überschreiben lassen
+  if (boostInterval) clearInterval(boostInterval);
   isTransitioning = true;
 
   const { baseStage, isBossRound, runStage } = context;
   const stonesLeft = getStonesRemaining();
 
   let nextStageValue = baseStage;
-
-  // Boss-System nur verwenden, wenn vorhanden (rückwärtskompatibel)
   const bossSystemReady = Boolean(window.__mc_bossSystemReady);
 
   if (bossSystemReady && isBossRound) {
     const bossDefeated = Boolean(window.__mc_bossDefeated);
     if (bossDefeated) {
-      // Boss besiegt -> Sieg registrieren, Stage ++
       recordBossDefeat(runStage);
       nextStageValue = runStage + 1;
     } else {
-      // Boss nicht besiegt -> Versuch registrieren, zurück zur Pre-Boss-Stage
       recordBossAttempt(runStage);
       nextStageValue = getPreBossStageFor(runStage);
     }
-    // Boss-Flag zurücksetzen (für nächste Runde)
     clearForceBossRound();
-    // interne Stage synchron halten
     setStageStages(nextStageValue, true);
   } else {
-    // Normaler Flow (Steine-basiert)
     nextStageValue = shouldAdvance(stonesLeft) ? baseStage + 1 : baseStage;
     setStageStages(nextStageValue, true);
   }
 
-  // Save aktualisieren
+  // Save aktualisieren (inkl. 3.0-Patch: level/boosts/regen)
   const slotKey = localStorage.getItem("mineclicker_current_slot");
   if (slotKey) {
     try {
@@ -117,10 +115,12 @@ function endRound(context) {
       save.remainingTime = Math.max(0, getTimeLeft() || 0);
       save.gold = getGold();
       save.upgrades = upgrades;
-      save.stage = nextStageValue;   // neue/gleiche Stage persistieren
+      save.stage = nextStageValue;
       delete save.startTime;
-      // Boss-Run-Status zurücksetzen (Sicherheitsnetz)
       save.forceBossRound = false;
+
+      Object.assign(save, getLevelBoostSavePatch());
+
       localStorage.setItem(slotKey, JSON.stringify(save));
     } catch {
       /* ignore */
@@ -135,7 +135,7 @@ function endRound(context) {
  * Spielstart
  * --------------------------------*/
 document.addEventListener("DOMContentLoaded", () => {
-  // Validierung des Save-Kontexts (wie gehabt)
+  // Save-Kontext prüfen
   const slotKey = localStorage.getItem("mineclicker_current_slot");
   if (!slotKey) { location.href = "index.html"; return; }
   try {
@@ -150,82 +150,105 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // 1) Stage laden & syncen
-  const baseStage = initStageFromSave(); // aus stages.js (liest robust aus dem Save)
-  setStageStages(baseStage);             // interne stages.js-Variable auf baseStage
+  const baseStage = initStageFromSave();
+  setStageStages(baseStage);
 
-  // 2) Boss-Kontext bestimmen (rückwärtskompatibel, erst aktiv wenn boss.js bereit)
+  // 2) Boss-Kontext
   const bossSystemReady = Boolean(window.__mc_bossSystemReady);
   const forcedBoss = getForceBossRound();
   const baseIsBoss = isBossStage(baseStage);
-
-  // Ist diese Runde ein Boss-Run?
   const isBossRound = bossSystemReady && (baseIsBoss || forcedBoss);
-
-  // Welche Stage wird diese Runde tatsächlich gespielt (für UI/Biome)?
   const runStage = isBossRound
     ? (baseIsBoss ? baseStage : getBossStageFor(baseStage))
     : baseStage;
 
-  // 3) Biome pro (run)Stage wählen & anwenden (CSS-Hintergrund) + in state.js hinterlegen
+  // 3) Biome anwenden
   const biome = getBiomeForStage(runStage);
   applyBiome(biome);
-  setBiomeState(biome); // damit map.js den passenden Floor nutzt
+  setBiomeState(biome);
 
-  // 4) UI initialisieren
+  // 4) UI init
   updateGoldDisplay();
   updateLevelInfo();
-  updateStageInfo(runStage, isBossRound); // "(Boss)" Marker wenn Boss-Run
+  updateStageInfo(runStage, isBossRound);
 
-  // 5) Map bauen (setzt intern stonesRemaining)
+  // 5) Map bauen
   window.__mc_isBossRound = isBossRound;
-  window.__mc_bossDefeated = false; // wird durch boss.js bei Boss-Kill auf true gesetzt
+  window.__mc_bossDefeated = false;
   generateMap();
 
-  // 6) Timer starten → beim Ablauf endRound()
+  // 5.5) Runde-spezifischer Reset (Phase 3.0)
+  resetStonesThisRound();
+
+  // 6) Timer
   const onTimerEnd = () => endRound({ baseStage, isBossRound, runStage });
   startTimer(onTimerEnd);
 
-  // 7) Mining-Loop (+ Boss-Sofort-Ende, falls besiegt)
+  // 7) Mining-Loop + Boss-Sofort-Ende
   aoeInterval = setInterval(() => {
     if (!gameRunning) return;
-
     autoMine(mouseX, mouseY);
-
-    // Sofortiger Abschluss, wenn Boss in dieser Runde bereits besiegt wurde
     if (isBossRound && window.__mc_bossDefeated) {
       endRound({ baseStage, isBossRound, runStage });
     }
   }, AOE_INTERVAL_MS);
 
-  // 8) Ring-Animation starten
+  // 8) Boost-/GoldRegen-Tick (Phase 3.0) – nur in Spielwelt
+  boostInterval = setInterval(() => {
+    if (!gameRunning) return;
+    tickBoostsAndRegen(1);     // 1 Sekunde
+    updateGoldDisplay();       // Gold-Regen sofort sichtbar
+  }, BOOST_TICK_MS);
+
+  // 9) Ring-Animation
   const radiusCircleEl = document.getElementById("radiusCircle");
   if (radiusCircleEl) animateRing(radiusCircleEl);
 });
 
 /* ---------------------------------
- * Aufräumen beim Verlassen
+ * Aufräumen beim Verlassen – Boss-Abbruch ladbar machen
  * --------------------------------*/
 window.addEventListener("beforeunload", () => {
-  // Bei bewusstem Wechsel ins Upgrade-Menü Save nicht mehr auf "paused" überschreiben
   if (isTransitioning) return;
 
-  gameRunning = false;
-  if (rafId) cancelAnimationFrame(rafId);
-  if (aoeInterval) clearInterval(aoeInterval);
-
-  // Zwischenstand sichern als "paused"
   const slotKey = localStorage.getItem("mineclicker_current_slot");
-  if (slotKey) {
-    try {
-      const save = JSON.parse(localStorage.getItem(slotKey) || "{}");
-      save.phase = "paused";
+  if (!slotKey) return;
+
+  try {
+    const save = JSON.parse(localStorage.getItem(slotKey) || "{}");
+
+    // Boss-Abbruch? → Versuch registrieren, zurück auf Pre-Boss, als "upgrades" speichern
+    if (window.__mc_isBossRound && !window.__mc_bossDefeated) {
+      const cur = getStage();
+      const bossStage = isBossStage(cur) ? cur : getBossStageFor(cur);
+      recordBossAttempt(bossStage);
+
+      save.phase = "upgrades";
       save.remainingTime = Math.max(0, getTimeLeft() || 0);
       save.gold = getGold();
       save.upgrades = upgrades;
-      save.stage = getStage();
+      save.stage = getPreBossStageFor(bossStage);
+      save.forceBossRound = false;
+      delete save.startTime;
+
+      // 3.0-Patch persistieren
+      Object.assign(save, getLevelBoostSavePatch());
+
       localStorage.setItem(slotKey, JSON.stringify(save));
-    } catch {
-      /* noop */
+      return;
     }
+
+    // Normaler Pause-Fall (kein Boss)
+    save.phase = "paused";
+    save.remainingTime = Math.max(0, getTimeLeft() || 0);
+    save.gold = getGold();
+    save.upgrades = upgrades;
+    save.stage = getStage();
+
+    Object.assign(save, getLevelBoostSavePatch());
+
+    localStorage.setItem(slotKey, JSON.stringify(save));
+  } catch {
+    // ignore
   }
 });

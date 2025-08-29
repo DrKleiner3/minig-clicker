@@ -1,12 +1,14 @@
 // js/ui.js
 // Statusleisten-Logik: Timer, Gold-, Level- und Stage-Anzeige
-// (keine Layout-/Design-Änderungen; nur Texte & Logik wie besprochen)
+// Phase 3.0: "Steine bis Level-Up" nutzt echten Stein-Progress
 
 import {
   getGold,
-  LEVEL_THRESHOLD,
   getTimeLeft,
   setTimeLeft,
+
+  // Neu für Phase 3.0:
+  getStonesToNextLevel,
 } from "./state.js";
 
 /* ---------- Helpers ---------- */
@@ -29,21 +31,18 @@ export function updateGoldDisplay() {
 }
 
 /**
- * Anzeige-Text: "Steine bis Level-Up".
- * Aktuell bleibt die Berechnung noch goldbasiert (LEVEL_THRESHOLD - Gold),
- * bis wir in einer späteren Phase auf echte "Steinziele" umstellen.
+ * Anzeige-Text: "Steine bis Level-Up" basierend auf echtem Stein-Progress.
  */
 export function updateLevelInfo() {
   const el = document.getElementById("levelInfo");
   if (!el) return;
-  const remaining = Math.max(0, LEVEL_THRESHOLD - getGold());
-  el.textContent = `Steine bis Level-Up: ${Math.ceil(remaining)}`;
+  const remainingStones = Math.max(0, Math.ceil(getStonesToNextLevel()));
+  el.textContent = `Steine bis Level-Up: ${remainingStones}`;
 }
 
 /**
  * Stage-Anzeige aktualisieren.
  * Wenn gerade eine Boss-Runde aktiv ist, wird "(Boss)" angehängt.
- * Optional kann man per zweitem Argument (boolean) erzwingen, ob Boss markiert wird.
  */
 export function updateStageInfo(stage, markBoss) {
   const el = document.getElementById("stageInfo");

@@ -1,9 +1,9 @@
 // js/map.js
-// Map-Aufbau: normale Runde = Steine mit Tile-Floor,
-// Boss-Runde = EIN großes Floor-Bild auf #game + Boss in der Mitte.
-// (Keine Layout-/Design-Änderungen)
+// Normale Runde: Steine + Tile-Floor
+// Boss-Runde: EIN großes Floor-Bild auf #game, Tiles transparent, Boss zentriert.
 
 import {
+  TILE_SIZE,           // für die visuelle Korrektur bei geraden Gridmaßen
   MAP_WIDTH,
   MAP_HEIGHT,
   upgrades,
@@ -34,8 +34,8 @@ enableBossSystem();
 
 /** Boss-Floor-Datei (aus assets/floor/boss/) rotierend nach Boss-Block */
 function getBossFloorForStage(stage) {
-  const bossStage = Math.max(6, getBossStageFor(stage));          // 6,12,18,…
-  const idx = (Math.ceil(bossStage / 6) - 1) % 3;                 // 0..2
+  const bossStage = Math.max(6, getBossStageFor(stage)); // 6,12,18,…
+  const idx = (Math.ceil(bossStage / 6) - 1) % 3;        // 0..2
   const files = ["boss_floor_lava.png", "boss_floor_rune.png", "boss_floor_void.png"];
   return files[idx] || files[0];
 }
@@ -90,7 +90,7 @@ function createStoneElement(isRare, hpMult, goldMult) {
 /**
  * Baut die Map neu auf.
  * - Normale Runde: Steine + Tile-Floor je Tile
- * - Boss-Runde: EIN großer Boss-Floor auf #game, Tiles transparent, 1 Boss
+ * - Boss-Runde: EIN großer Boss-Floor auf #game, Tiles transparent, 1 Boss zentriert
  * @returns {number} stonesCount
  */
 export function generateMap() {
@@ -118,18 +118,27 @@ export function generateMap() {
     const bossFloor = getBossFloorForStage(getStage());
     gameArea.style.background = `url('assets/floor/boss/${bossFloor}') center / contain no-repeat`;
 
-    // Tiles sollen transparent bleiben (keine per-Tile-Floor-Grafik)
+    // Tiles transparent lassen (keine per-Tile-Floor-Grafik)
     tiles.forEach(t => {
       t.style.backgroundImage = "none";
       t.style.backgroundColor = "transparent";
     });
 
-    // Boss in die zentrale Tile setzen
+    // Boss in (nahezu) zentrale Tile setzen ...
     const cx = Math.floor(MAP_WIDTH / 2);
     const cy = Math.floor(MAP_HEIGHT / 2);
     const idx = Math.max(0, Math.min(tiles.length - 1, cy * MAP_WIDTH + cx));
     const centerTile = tiles[idx] || tiles[0];
-    spawnBoss(centerTile, getBossStageFor(getStage()));
+
+    // ... und für gerade Gridmaße optisch halb verschieben, damit er genau mittig sitzt
+    const bossEl = spawnBoss(centerTile, getBossStageFor(getStage()));
+    if (bossEl) {
+      const offX = (MAP_WIDTH  % 2 === 0) ? -TILE_SIZE / 2 : 0;
+      const offY = (MAP_HEIGHT % 2 === 0) ? -TILE_SIZE / 2 : 0;
+      if (offX || offY) {
+        bossEl.style.transform = `translate(${offX}px, ${offY}px)`;
+      }
+    }
 
     setStonesRemaining(0);
     return 0;
