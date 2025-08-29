@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mine Clicker – Spiel</title>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body data-page="game">
+  <!-- Obere Statusleiste -->
+  <div class="game-ui">
+    <div class="statusbar">
+      <span id="timer"> 00:30</span>
+      <span id="goldDisplay"> Gold: 0</span>
+      <span id="levelInfo"> Steine bis Level-Up: 1000</span>
+    </div>
+  </div>
+
+  <!-- Spielfeld -->
+  <div id="game"></div>
+
+  <!-- Maus-/Mining-Radius -->
+  <div id="radiusCircle"></div>
+
+  <!-- Einstiegspunkt: lädt die restlichen Module per ES-Imports -->
+  <script type="module" src="js/game.js"></script>
+</body>
+</html>

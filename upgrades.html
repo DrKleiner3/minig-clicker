@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mine Clicker – Upgrades</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body data-page="upgrades">
+  <!-- Titel (Icon statt Emoji; Stil aus style.css) -->
+  <h1 class="upgrade-title">
+    <img class="ui-ico ui-ico-title" src="assets/ui/upgrades.png" alt=""> Upgrades auswählen
+  </h1>
+
+  <!-- Gold-Anzeige (Icon statt Emoji) -->
+  <div id="goldDisplay" style="font-size:1.2rem; margin:0.5rem 0 1rem;">
+    <img class="ui-ico" src="assets/ui/Gold.png" alt=""> Gold: <span id="goldAmount">0</span>
+  </div>
+
+  <!-- Upgrade-Karten (Buttons) -->
+  <div id="upgradeButtons" class="upgrade-grid"></div>
+
+  <!-- Start/Nächste Runde + (konditional) Boss angreifen -->
+  <div style="text-align:center; margin-bottom: 2rem;">
+    <button id="nextRoundBtn" style="margin:1rem auto 0.6rem; display:inline-block;">Neue Runde starten</button>
+    <br />
+    <button id="bossRoundBtn" style="margin:0.2rem auto 0; display:none;">Boss angreifen</button>
+  </div>
+
+  <script>
+    // ---- Slot/Speicher prüfen ----
+    const slotKey = localStorage.getItem("mineclicker_current_slot");
+    if (!slotKey) location.href = "index.html";
+
+    let save;
+    try {
+      save = JSON.parse(localStorage.getItem(slotKey));
+      if (!save || save.phase !== "upgrades") throw new Error("wrong phase");
+    } catch {
+      location.href = "index.html";
+    }
+
+    // ---- Caps (Phase 2.1) – spiegeln state.js ----
+    const MAX_RADIUS = 25;
+    const MAX_AMOUNT = 101;
+
+    // ---- Defaults mergen & casten ----
+    const DEFAULT_UPGRADES = { radius: 1, damage: 0, amount: 0, goldBoost: 0 };
+    let gold = Number(save.gold ?? 0);
+    if (!Number.isFinite(gold)) gold = 0;
+
+    let upgrades = (save.upgrades && typeof save.upgrades === "object")
+      ? { ...DEFAULT_UPGRADES, ...save.upgrades }
+      : { ...DEFAULT_UPGRADES };
+
+    for (const k of Object.keys(DEFAULT_UPGRADES)) {
+      const n = Number(upgrades[k] ?? DEFAULT_UPGRADES[k]);
+      upgrades[k] = Number.isFinite(n) ? n : DEFAULT_UPGRADES[k];
+    }
+
+    // ---- DOM ----
+    const goldAmountEl   = document.getElementById("goldAmount");
+    const upgradeButtons = document.getElementById("upgradeButtons");
+    const nextRoundBtn   = document.getElementById("nextRoundBtn");
+    const bossRoundBtn   = document.getElementById("bossRoundBtn");
+
+    // ---- Icons & Labels ----
+    const ICONS = {
+      radius: "assets/ui/radius.png",
+      damage: "assets/ui/damage.png",
+      amount: "assets/ui/stoneupgrade.png",
+      goldBoost: "assets/ui/goldupgrade.png",
+      gold: "assets/ui/Gold.png"
+    };
+    const LABELS = {
+      radius: "Radius",
+      damage: "Schaden",
+      amount: "Mehr Steine",
+      goldBoost: "Gold Boost"
+    };
+
+    function updateGoldDisplay() {
+      goldAmountEl.textContent = Math.floor(gold);
+    }
+
+    // Kostenfunktion (einfach anpassbar)
+    function calcCost(key, level) {
+      return Math.floor(50 * Math.pow(1.5, level));
+    }
+
+    function renderUpgrades() {
+      upgradeButtons.innerHTML = "";
+
+      const list = ["radius", "damage", "amount", "goldBoost"];
+      list.forEach((key) => {
+        const level = Number(upgrades[key] ?? 0);
+
+        // MAX-Logik nur für Radius & Amount
+        const isCapped =
+          (key === "radius" && level >= MAX_RADIUS) ||
+          (key === "amount" && level >= MAX_AMOUNT);
+
+        const cost = isCapped ? null : calcCost(key, level);
+
+        // Button (Layout bleibt wie gehabt)
+        const btn = document.createElement("button");
+        btn.style.width = "220px";
+        btn.style.textAlign = "left";
+        btn.style.padding = "8px 12px";
+        btn.title = isCapped
+          ? `${LABELS[key]} – Level ${level} (MAX erreicht)`
+          : `${LABELS[key]} – Level ${level} – Kosten: ${cost}`;
+
+        const levelLabel = isCapped ? `Lv. ${level} (MAX)` : `Lv. ${level}`;
+        const costLabel  = isCapped ? "–" : String(cost);
+
+        btn.innerHTML =
+          `<img class="ui-ico" src="${ICONS[key]}" alt=""> ${LABELS[key]}` +
+          `<br>${levelLabel}` +
+          `<br><img class="ui-ico" src="${ICONS.gold}" alt=""> ${costLabel}`;
+
+        // Nicht disable'n → Alerts funktionieren
+        btn.onclick = () => {
+          if (isCapped) {
+            alert("Maximum erreicht");
+            return;
+          }
+          if (gold < cost) {
+            alert("Nicht genug Gold!");
+            return;
+          }
+          gold -= cost;
+          upgrades[key] = level + 1;
+
+          // Sofort speichern
+          const updated = { ...save, gold, upgrades };
+          localStorage.setItem(slotKey, JSON.stringify(updated));
+
+          updateGoldDisplay();
+          renderUpgrades();
+        };
+
+        upgradeButtons.appendChild(btn);
+      });
+    }
+
+    // ---- Boss-Flow (Phase 2.2) – nur lokale Helfer, kein Modulimport nötig ----
+    function getBossStageFor(s) {
+      const v = Math.max(1, Math.floor(Number(s) || 1));
+      return Math.ceil(v / 6) * 6;
+    }
+    function hasBossAttempt(bossStage) {
+      const prog = (save && typeof save.bossProgress === "object") ? save.bossProgress : {};
+      const p = prog && prog[String(bossStage)];
+      return Boolean(p && p.attempted);
+    }
+    function hasBossDefeat(bossStage) {
+      const prog = (save && typeof save.bossProgress === "object") ? save.bossProgress : {};
+      const p = prog && prog[String(bossStage)];
+      return Boolean(p && p.defeated);
+    }
+    function updateBossButton() {
+      const currentStage = Math.max(1, Math.floor(Number(save?.stage ?? 1)));
+      const bossStage = getBossStageFor(currentStage);
+      const show = hasBossAttempt(bossStage) && !hasBossDefeat(bossStage);
+      bossRoundBtn.style.display = show ? "inline-block" : "none";
+      if (show) {
+        bossRoundBtn.textContent = `Boss angreifen (Stage ${bossStage})`;
+        bossRoundBtn.title = `Du kannst den Boss der Stage ${bossStage} erneut herausfordern.`;
+      }
+    }
+
+    function startNextRound() {
+      const updated = {
+        ...save,
+        gold,                 // aktuelles Gold persistieren
+        upgrades,             // aktuelle Upgrades persistieren
+        phase: "playing",
+        startTime: Date.now(),
+        remainingTime: undefined, // auf Spielstart neu gesetzt
+        forceBossRound: false
+      };
+      localStorage.setItem(slotKey, JSON.stringify(updated));
+      location.href = "game.html";
+    }
+
+    function startBossRound() {
+      const updated = {
+        ...save,
+        gold,
+        upgrades,
+        phase: "playing",
+        startTime: Date.now(),
+        remainingTime: undefined,
+        forceBossRound: true
+      };
+      localStorage.setItem(slotKey, JSON.stringify(updated));
+      location.href = "game.html";
+    }
+
+    // ---- Event-Bindings ----
+    nextRoundBtn.addEventListener("click", startNextRound);
+    bossRoundBtn.addEventListener("click", startBossRound);
+
+    // ---- Init ----
+    updateGoldDisplay();
+    renderUpgrades();
+    updateBossButton();
+  </script>
+</body>
+</html>

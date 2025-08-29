@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Mine Clicker – Speicherplätze</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="index">
+  <!-- Logo oben links -->
+  <img src="assets/logo/logo.png" alt="Mine Clicker Logo" class="game-logo" width="120" height="120">
+
+  <h1>Speicherplatz auswählen</h1>
+
+  <div class="slot-container">
+    <!-- SLOT 1 -->
+    <div class="slot" id="slot1">
+      <div class="slot-info">
+        <h2>Speicherplatz 1</h2>
+        <p id="status1">Lade...</p>
+      </div>
+      <div class="slot-actions">
+        <button onclick="loadGame('slot1')" id="load1">📂 Laden</button>
+        <button onclick="startNewGame('slot1')">🆕 Neues Spiel</button>
+        <button onclick="clearSlot('slot1')">❌ Löschen</button>
+      </div>
+    </div>
+
+    <!-- SLOT 2 -->
+    <div class="slot" id="slot2">
+      <div class="slot-info">
+        <h2>Speicherplatz 2</h2>
+        <p id="status2">Lade...</p>
+      </div>
+      <div class="slot-actions">
+        <button onclick="loadGame('slot2')" id="load2">📂 Laden</button>
+        <button onclick="startNewGame('slot2')">🆕 Neues Spiel</button>
+        <button onclick="clearSlot('slot2')">❌ Löschen</button>
+      </div>
+    </div>
+
+    <!-- SLOT 3 -->
+    <div class="slot" id="slot3">
+      <div class="slot-info">
+        <h2>Speicherplatz 3</h2>
+        <p id="status3">Lade...</p>
+      </div>
+      <div class="slot-actions">
+        <button onclick="loadGame('slot3')" id="load3">📂 Laden</button>
+        <button onclick="startNewGame('slot3')">🆕 Neues Spiel</button>
+        <button onclick="clearSlot('slot3')">❌ Löschen</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const slots = ["slot1", "slot2", "slot3"];
+    slots.forEach(slot => {
+      const data = localStorage.getItem(slot);
+      const idx = slot.slice(-1);
+      document.getElementById(`status${idx}`).textContent = data ? "Spielstand vorhanden" : "Leer";
+      document.getElementById(`load${idx}`).disabled = !data;
+    });
+
+    function startNewGame(slot) {
+      const save = {
+        gold: 0,
+        upgrades: { radius: 1, damage: 0, amount: 0, goldBoost: 0 },
+        phase: "playing",
+        startTime: Date.now()
+      };
+      localStorage.setItem(slot, JSON.stringify(save));
+      localStorage.setItem("mineclicker_current_slot", slot);
+      location.href = "game.html";
+    }
+
+    function loadGame(slot) {
+      try {
+        const data = JSON.parse(localStorage.getItem(slot));
+        if (data) {
+          localStorage.setItem("mineclicker_current_slot", slot);
+          const phase = data.phase || "playing";
+          location.href = phase === "upgrades" ? "upgrades.html" : "game.html";
+        } else {
+          alert("Kein gültiger Spielstand!");
+        }
+      } catch {
+        alert("Fehler beim Laden des Speicherstands.");
+      }
+    }
+
+    function clearSlot(slot) {
+      localStorage.removeItem(slot);
+      location.reload();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,575 @@
+/* ================================
+   Allgemeines Design / Base
+================================ */
+body {
+  background-color: #111;
+  color: white;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden; /* Scrollen verhindern (Spiel & Index) */
+}
+
+/* Biome-Hintergründe (Spiel) */
+body[data-biome="default"] { background: #111; }
+body[data-biome="cave"]    { background: #222; }
+body[data-biome="lava"]    { background: #441111; }
+
+/* ================================
+   GAME: Statusleiste + Icons (fix)
+================================ */
+body[data-page="game"] .statusbar {
+  font-size: 1.6rem;
+  gap: 26px;
+}
+body[data-page="game"] .statusbar span {
+  position: relative;
+  padding-left: 32px; /* Platz fürs Icon */
+  text-shadow: 1px 1px 2px #000, 0 0 6px rgba(0,0,0,.35);
+  font-weight: 600;
+}
+/* Basis-Iconbox */
+body[data-page="game"] .statusbar span::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  transform: translateY(-50%);
+  background-size: contain;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.6));
+  pointer-events: none;
+  image-rendering: auto;
+}
+
+/* Konkrete Icons (Pfade exakt, inkl. Groß-/Kleinschreibung) */
+body[data-page="game"] #timer::before {
+  background-image: url("../assets/ui/timer.png");
+}
+body[data-page="game"] #goldDisplay::before {
+  background-image: url("../assets/ui/Gold.png"); /* Großes G wie in deiner Datei */
+}
+body[data-page="game"] #levelInfo::before {
+  background-image: url("../assets/ui/levelup.png");
+}
+
+/* Stage: neben Gold, größeres Icon */
+body[data-page="game"] #stageInfo {
+  padding-left: 40px;
+  font-weight: 700;
+}
+body[data-page="game"] #stageInfo::before {
+  width: 28px;
+  height: 28px;
+  background-image: url("../assets/ui/stage.png");
+}
+
+/* ================================
+   Spielfeld (#game) – 12 x 13 Tiles
+================================ */
+#game {
+  display: grid;
+  grid-template-columns: repeat(12, 64px);
+  grid-template-rows: repeat(13, 64px);
+  margin: 60px auto 0 auto; /* etwas weiter nach unten versetzt */
+  position: relative;
+  width: 768px;   /* 12 × 64 */
+  height: 832px;  /* 13 × 64 */
+}
+
+.tile {
+  box-sizing: border-box;
+  position: relative;
+  filter: brightness(0.8);
+}
+
+.stone, .boss {
+  width: 64px;
+  height: 64px;
+  background-size: cover;
+  position: relative;
+}
+
+.hp-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 6px;
+  background-color: lime;
+  width: 100%;
+  transition: background-color 0.2s, width 0.2s;
+}
+
+/* ================================
+   Ring für Mining-Radius
+================================ */
+#radiusCircle {
+  position: absolute;
+  pointer-events: none;
+  background-image: url("../assets/ring/miningring.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  width: 128px;
+  height: 128px;
+  z-index: 10;
+  opacity: 0.9;
+  animation:
+    ringGlow 3s ease-in-out infinite,
+    ringRotate 10s linear infinite,
+    ringPulse 2s ease-in-out infinite;
+}
+
+/* ================================
+   Animationen & Effekte
+================================ */
+@keyframes ringGlow {
+  0%,100% { filter: drop-shadow(0 0 6px lime); }
+  50%     { filter: drop-shadow(0 0 16px limegreen); }
+}
+@keyframes ringRotate {
+  from { transform: rotate(0deg); } to { transform: rotate(360deg); }
+}
+@keyframes ringPulse {
+  0%,100% { transform: scale(1); } 50% { transform: scale(1.05); }
+}
+@keyframes shake {
+  0%,100% { transform: translate(0,0); }
+  25%     { transform: translate(1px,-1px); }
+  50%     { transform: translate(-1px,1px); }
+  75%     { transform: translate(1px,1px); }
+}
+@keyframes glow-shine {
+  from { filter: brightness(1); } to { filter: brightness(1.5); }
+}
+@keyframes particle-rise {
+  to { transform: translate(-10px,-20px) scale(0); opacity: 0; }
+}
+@keyframes gold-fly {
+  to { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+}
+@keyframes fieldGlow {
+  0%,100% { box-shadow: inset 0 0 0px yellow; }
+  50%     { box-shadow: inset 0 0 20px yellow; }
+}
+@keyframes highlight {
+  0%,100% { transform: scale(1); color: gold; }
+  50%     { transform: scale(1.5); color: yellow; }
+}
+@keyframes rare-glow {
+  from { filter: brightness(1); }
+  to   { filter: brightness(1.5); }
+}
+@keyframes sparkle {
+  0%, 100% { filter: drop-shadow(0 0 5px red); }
+  50%      { filter: drop-shadow(0 0 15px orange); }
+}
+
+/* Seltene Steine & Boss-Glitzern */
+.stone.rare {
+  animation: rare-glow 1.2s ease-in-out infinite alternate;
+  box-shadow: 0 0 10px gold;
+}
+.boss {
+  animation: sparkle 2s linear infinite;
+}
+
+/* Partikel & Gold-Icon-Flight */
+.particle {
+  position: absolute;
+  width: 8px; height: 8px;
+  background: rgba(255,255,0,0.8);
+  border-radius: 50%;
+  animation: particle-rise 0.6s ease-out forwards;
+  pointer-events: none;
+}
+.fly-gold {
+  position: absolute;
+  width: 16px; height: 16px;
+  background: gold;
+  border-radius: 50%;
+  animation: gold-fly 0.8s ease-in-out forwards;
+  pointer-events: none;
+  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 999;
+}
+
+/* Feld- und Gold-Highlights */
+#game.glow {
+  animation: fieldGlow 0.8s ease-in-out;
+}
+#goldDisplay.levelup {
+  animation: highlight 1s ease-in-out;
+}
+
+/* ================================
+   Speicherplätze (allgemein – bestehend)
+================================ */
+.slot-container {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-top: 30px;
+}
+.slot-card {
+  background-color: #111;
+  border: 2px dashed #666;
+  border-radius: 10px;
+  padding: 20px;
+  width: 250px;
+  text-align: center;
+  color: white;
+  box-shadow: 0 0 10px #000;
+}
+.slot-card h2 { margin-bottom: 10px; }
+.slot-card p  { margin: 5px 0 10px; }
+.slot-card button {
+  margin: 5px;
+  padding: 8px 12px;
+  background-color: #333;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.slot-card button:hover { background-color: #555; }
+.slot-card button:disabled {
+  background-color: #222;
+  color: #777;
+  cursor: not-allowed;
+}
+
+/* ================================
+   Upgrades (bestehend)
+================================ */
+.upgrade-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  margin: 2rem auto;
+}
+.upgrade-card {
+  background: #333;
+  border: 2px solid #555;
+  border-radius: 8px;
+  padding: 1rem;
+  width: 180px;
+  text-align: center;
+}
+.upgrade-card h3 { margin-top: 0; }
+.upgrade-card button { margin-top: 0.5rem; }
+
+/* ================================
+   Index-Seite (Phase 3 – Hintergrund, Logo, Slots)
+   Greift nur, wenn <body data-page="index"> gesetzt ist
+================================ */
+body[data-page="index"] {
+  background: url("../assets/backgrounds/indexbackground.png") center / cover no-repeat fixed;
+}
+
+/* Logo oben links (120x120) */
+body[data-page="index"] .game-logo {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 220px;
+  height: 220px;
+  z-index: 1000;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+/* Großer Titel mit Abstand (Platz fürs Logo) */
+body[data-page="index"] h1 {
+  font-size: 3rem;
+  margin-top: 160px;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+}
+
+/* ================================
+   Index-Seite – Slots mit Rahmen im Vordergrund (ABSOLUTE LAYOUT)
+================================ */
+.slot-container{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:28px;
+  margin-top:40px;
+}
+body[data-page="index"] .slot{
+  position:relative;
+  width:450px;
+  height:170px;
+  color:#fff;
+  border-radius:10px;
+  overflow:hidden;
+}
+body[data-page="index"] .slot::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:url("../assets/logo/speicherplatzrahmen.png") center/100% 100% no-repeat;
+  z-index:2;
+  pointer-events:none;
+}
+body[data-page="index"] .slot > *{ position:relative; z-index:3; }
+body[data-page="index"] .slot-info{
+  position:absolute;
+  left:26px;
+  top:50%;
+  transform:translateY(-50%);
+  width:220px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+}
+body[data-page="index"] .slot-info h2{ margin:0 0 6px; font-size:1.2rem; line-height:1.2; }
+body[data-page="index"] .slot-info p { margin:0; font-size:1rem; opacity:.9; }
+body[data-page="index"] .slot-actions{
+  position:absolute;
+  left:256px;
+  top:50%;
+  transform:translateY(-50%);
+  width:140px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+body[data-page="index"] .slot-actions button{
+  width:100%;
+  padding:6px 10px;
+  background:#2f2f2f; color:#fff;
+  border:2px solid #555; border-radius:6px;
+  font-weight:700; cursor:pointer; text-align:left;
+  transition:background .15s ease, transform .1s ease, border-color .15s ease;
+}
+body[data-page="index"] .slot-actions button:hover{ background:#3b3b3b; border-color:#777; transform:translateY(-1px); }
+body[data-page="index"] .slot-actions button:disabled{ background:#222; color:#777; border-color:#444; cursor:not-allowed; }
+
+/* ================================
+   Upgrade-Seite – Hintergrund (wie gehabt)
+================================ */
+body[data-page="upgrades"] {
+  background: url("../assets/backgrounds/upgradebackground.png") center / cover no-repeat fixed;
+  min-height: 100vh;
+  color: #fff;
+}
+
+/* ——— Helper für Inline-Icons (nur Ergänzung, kein Layout-Shift) ——— */
+.ui-ico       { width: 32px; height: 32px; vertical-align: -3px; margin-right: 6px; image-rendering: auto; }
+.ui-ico-title { width: 64px; height: 64px; vertical-align: -6px; margin-right: 8px; }
+
+.upgrade-title {
+  margin: 40px 0 10px;
+  font-size: 2rem;
+  font-weight: 800;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+}
+
+/* Gold-Anzeige etwas hervorheben */
+body[data-page="upgrades"] #goldDisplay {
+  margin-top: 6px;
+  font-size: 1.2rem;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+}
+
+/* 4 Karten pro Reihe, mittig */
+.upgrade-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 180px);
+  gap: 45px; /* mehr Abstand zwischen Buttons (vorher 28px) */
+  justify-content: center;
+  margin: 40px auto 30px;
+}
+
+/* Karten als Buttons (quadratisch) */
+.upgrade-grid > button,
+.upgrade-card {
+  width: 180px;
+  height: 180px;
+  border-radius: 16px;
+  background: rgba(30,30,30,0.9);
+  color: #fff;
+  border: 2px solid rgba(255,255,255,0.08);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.45);
+  cursor: pointer;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+
+  font-weight: 800;
+  line-height: 1.3;
+  padding: 14px;
+
+  transition: transform 0.18s ease, box-shadow 0.25s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+/* Hover: Leuchten */
+.upgrade-grid > button:hover,
+.upgrade-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 0 26px rgba(255, 215, 0, 0.65), 0 10px 24px rgba(0,0,0,0.55);
+  border-color: rgba(255, 215, 0, 0.55);
+  background: rgba(40,40,40,0.95);
+}
+
+/* Optional: kleine Labels in der Karte schöner darstellen */
+.upgrade-grid > button br { content: ""; }
+
+/* Start-Button unten */
+body[data-page="upgrades"] button[onclick^="startNextRound"] {
+  display: inline-block;
+  margin: 10px auto 40px;
+  padding: 12px 18px;
+  font-weight: 800;
+  border-radius: 10px;
+  background: #2f2f2f;
+  color: #fff;
+  border: 2px solid #555;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+  transition: background 0.2s ease, transform 0.1s ease, border-color 0.2s ease;
+}
+body[data-page="upgrades"] button[onclick^="startNextRound"]:hover {
+  background: gold;
+  color: #111;
+  border-color: #d9b300;
+  transform: translateY(-2px);
+}
+
+/* Responsiv: 2 Karten pro Reihe auf kleineren Screens */
+@media (max-width: 900px) {
+  .upgrade-grid { grid-template-columns: repeat(2, 180px); gap: 26px; }
+}
+@media (max-width: 420px) {
+  .upgrade-grid { grid-template-columns: repeat(2, 150px); gap: 18px; }
+  .upgrade-grid > button, .upgrade-card { width: 150px; height: 150px; border-radius: 14px; }
+}
+
+/* === Treffer-Chips (kleine Bruchstücke, fliegen kurz weg) === */
+.chip {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: linear-gradient(#cfcfcf, #8a8a8a);
+  border-radius: 1px;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,.4));
+  animation: chip-pop var(--chip-spd, .4s) ease-out forwards;
+}
+
+@keyframes chip-pop {
+  0%   { opacity: 1; transform: translate(0,0) rotate(0deg) scale(1); }
+  70%  { opacity: .9; transform: translate(var(--dx, -10px), var(--dy, -14px)) rotate(25deg) scale(.9); }
+  100% { opacity: 0; transform: translate(calc(var(--dx, -10px)*1.4), calc(var(--dy, -14px)*1.3)) rotate(60deg) scale(.75); }
+}
+
+/* === Wackel-Feedback (nutzt dein vorhandenes @keyframes shake) === */
+.shake { animation: shake .12s; }
+
+/* === Rare-Stone Funkeln (JS erzeugt .sparkle-Kinder auf seltenen Steinen) === */
+.stone.rare { position: relative; overflow: visible; }
+
+.stone.rare .sparkle {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  /* Sternform */
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  background: radial-gradient(circle, #fff 40%, #ffd700 65%, rgba(255,215,0,0) 70%);
+  filter: drop-shadow(0 0 6px rgba(255,215,0,.9));
+  pointer-events: none;
+  opacity: 0;
+
+  /* Animation mit zufälligen Variablen pro Element (via inline style) */
+  animation: sparkle-pop var(--spd, 1.2s) ease-in-out var(--delay, 0s) infinite;
+  transform-origin: center;
+}
+
+@keyframes sparkle-pop {
+  0%   { opacity: 0; transform: scale(.4) rotate(0deg); }
+  40%  { opacity: 1; transform: scale(1) rotate(20deg); }
+  60%  { opacity: .85; transform: scale(.85) rotate(35deg); }
+  100% { opacity: 0; transform: scale(.4) rotate(60deg); }
+}
+
+
+/* ================================
+   GAME: Biome-Hintergründe
+   (wirkt nur, wenn das Spiel JS das data-biome am <body> setzt)
+================================ */
+body[data-biome]{
+  /* Basis + Fallback */
+  background-color: #0b0b0b;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+/* Gras */
+body[data-biome="gras"]{
+  background-image: url("../assets/backgrounds/grasbackground.png");
+}
+
+/* Dirt/Erdreich */
+body[data-biome="dirt"]{
+  background-image: url("../assets/backgrounds/dirtbackground.png");
+}
+
+/* Stone/Cave */
+body[data-biome="stone"],
+body[data-biome="cave"]{
+  background-image: url("../assets/backgrounds/stonebackground.png");
+}
+
+/* Lava */
+body[data-biome="lava"]{
+  background-image: url("../assets/backgrounds/lavabackground.png");
+}
+
+/* Dungeon */
+body[data-biome="dungeon"]{
+  background-image: url("../assets/backgrounds/dungeonbackground.png");
+}
+
+/* Crystal */
+body[data-biome="crystal"]{
+  background-image: url("../assets/backgrounds/crystalbackground.png");
+}
+
+/* Ice */
+body[data-biome="ice"]{
+  background-image: url("../assets/backgrounds/icebackground.png");
+}
+
+/* Re-Zentrieren der Statusleiste + Reihenfolge Gold | Stage rechts daneben */
+body[data-page="game"] .statusbar {
+  display: flex;               /* sicherstellen */
+  justify-content: center;     /* wieder zentrieren */
+  align-items: center;
+  gap: 26px;
+  width: 100%;
+}
+
+/* Items nicht dehnen */
+body[data-page="game"] .statusbar > span {
+  flex: 0 0 auto;
+}
+
+/* Reihenfolge: Timer | Gold | Stage | Level */
+body[data-page="game"] #timer      { order: 1; }
+body[data-page="game"] #goldDisplay{ order: 2; }
+body[data-page="game"] #stageInfo  { order: 3; }  /* rechts von Gold */
+body[data-page="game"] #levelInfo  { order: 4; }
