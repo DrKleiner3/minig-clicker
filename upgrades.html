@@ -35,9 +35,17 @@
     let save;
     try {
       save = JSON.parse(localStorage.getItem(slotKey));
-      if (!save || save.phase !== "upgrades") throw new Error("wrong phase");
     } catch {
+      save = null;
+    }
+    if (!save || typeof save !== "object") {
       location.href = "index.html";
+    } else {
+      // *** Minimal-Fix: Phase immer ladbar machen ***
+      if (save.phase !== "upgrades") {
+        save.phase = "upgrades";
+        localStorage.setItem(slotKey, JSON.stringify(save));
+      }
     }
 
     // ---- Caps (Phase 2.1) – spiegeln state.js ----
@@ -119,7 +127,6 @@
           `<br>${levelLabel}` +
           `<br><img class="ui-ico" src="${ICONS.gold}" alt=""> ${costLabel}`;
 
-        // Nicht disable'n → Alerts funktionieren
         btn.onclick = () => {
           if (isCapped) {
             alert("Maximum erreicht");
@@ -144,7 +151,7 @@
       });
     }
 
-    // ---- Boss-Flow (Phase 2.2) – nur lokale Helfer, kein Modulimport nötig ----
+    // ---- Boss-Flow (Phase 2.2) – lokale Helfer ----
     function getBossStageFor(s) {
       const v = Math.max(1, Math.floor(Number(s) || 1));
       return Math.ceil(v / 6) * 6;

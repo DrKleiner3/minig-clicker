@@ -1,6 +1,7 @@
 // js/game.js
 // Runden-Orchestrierung: Stage/Biom anwenden, Map bauen, Timer/Mining/Boost-Tick steuern,
 // Rundenende speichern → Upgrades. Enthält Boss-Flow + Ring-Cap + Boss-Abbruch-Fix + 3.0-Regen/Boost-Tick.
+// NEU: Start akzeptiert jede phase (paused/…); wird sanft auf "playing" normalisiert.
 
 import {
   TILE_SIZE,
@@ -46,7 +47,7 @@ let mouseX = 0;
 let mouseY = 0;
 let rafId = null;
 let aoeInterval = null;
-let boostInterval = null;   // ← NEU: Boost-/Regen-Tick
+let boostInterval = null;   // Boost-/Regen-Tick
 let gameRunning = true;
 let isTransitioning = false;
 
@@ -138,15 +139,23 @@ document.addEventListener("DOMContentLoaded", () => {
   // Save-Kontext prüfen
   const slotKey = localStorage.getItem("mineclicker_current_slot");
   if (!slotKey) { location.href = "index.html"; return; }
+
+  let save;
   try {
-    const save = JSON.parse(localStorage.getItem(slotKey));
-    if (!save || save.phase !== "playing") {
-      location.href = "upgrades.html";
-      return;
-    }
+    save = JSON.parse(localStorage.getItem(slotKey) || "{}");
   } catch {
+    save = null;
+  }
+  if (!save || typeof save !== "object") {
     location.href = "index.html";
     return;
+  }
+
+  // *** NEU: Phase-sanitisierung – immer spielbar machen ***
+  if (save.phase !== "playing") {
+    save.phase = "playing";
+    save.startTime = Date.now();
+    localStorage.setItem(slotKey, JSON.stringify(save));
   }
 
   // 1) Stage laden & syncen
@@ -238,7 +247,8 @@ window.addEventListener("beforeunload", () => {
       return;
     }
 
-    // Normaler Pause-Fall (kein Boss)
+    // Normaler Pause-Fall (kein Boss) – weiterhin speichern,
+    // aber dank Start-Sanitisierung ist der Slot später trotzdem ladbar.
     save.phase = "paused";
     save.remainingTime = Math.max(0, getTimeLeft() || 0);
     save.gold = getGold();
