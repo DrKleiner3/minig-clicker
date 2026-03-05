@@ -9,7 +9,7 @@
 export const TILE_SIZE = 64;
 
 export let MAP_WIDTH = 12;
-export let MAP_HEIGHT = 13;
+export let MAP_HEIGHT = 16;
 
 export const AOE_INTERVAL_MS = 200;
 
@@ -311,5 +311,6 @@ export function getLevelBoostSavePatch() {
     activeBoosts,
   };
 }
+
 
 
