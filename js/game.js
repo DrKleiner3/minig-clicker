@@ -25,7 +25,6 @@ import {
   // Phase 3.0 – Level/Boost
   BOOST_TICK_MS,
   tickBoostsAndRegen,
-  updateBoostPanel,
   getLevelBoostSavePatch,
   resetStonesThisRound,
 } from "./state.js";
@@ -271,4 +270,5 @@ window.addEventListener("beforeunload", () => {
     // ignore
   }
 });
+
 
