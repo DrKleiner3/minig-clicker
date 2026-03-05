@@ -1,14 +1,19 @@
 // js/ui.js
 // Statusleisten-Logik: Timer, Gold-, Level- und Stage-Anzeige
 // Phase 3.0: "Steine bis Level-Up" nutzt echten Stein-Progress
+// + Boost Panel: Gold Regen + aktive Boosts
 
 import {
   getGold,
   getTimeLeft,
   setTimeLeft,
 
-  // Neu für Phase 3.0:
+  // Phase 3.0 – Progress
   getStonesToNextLevel,
+
+  // Boost/Gold-Regen Anzeige
+  getGoldRegenPerSec,
+  getActiveBoosts,
 } from "./state.js";
 
 /* ---------- Helpers ---------- */
@@ -40,35 +45,39 @@ export function updateLevelInfo() {
   el.textContent = `Steine bis Level-Up: ${remainingStones}`;
 }
 
-
 /**
-* Gold Regen Boost
-*/
-
-import { getGoldRegenPerSec, getActiveBoosts } from "./state.js";
-
-export function updateBoostPanel(){
+ * Boost Panel rechts: "Booster:" + darunter Gold Regen und aktive Boosts.
+ * Erwartet im HTML:
+ * <div id="boostPanel"><div class="boostTitle">Booster:</div><div id="boostList"></div></div>
+ */
+export function updateBoostPanel() {
   const list = document.getElementById("boostList");
-  if(!list) return;
+  if (!list) return;
 
-  const regen = getGoldRegenPerSec();
+  const regen = Number(getGoldRegenPerSec() || 0);
   const boosts = getActiveBoosts();
 
   const lines = [];
+  // Ohne Klammern, wie gewünscht:
   lines.push(`Gold Regen: ${regen}`);
 
-  // optional: aktive Boosts anzeigen
-  for (const b of boosts){
-    // z.B. "gold +50% 8s"
-    const pct = (b.type === "gold" || b.type === "damage")
-      ? `${Math.round(b.magnitude * 100)}%`
-      : `${b.magnitude}`;
-    lines.push(`${b.type}: ${pct} (${b.remainingSec}s)`);
+  // Aktive Boosts (optional)
+  for (const b of boosts) {
+    const type = String(b.type || "");
+    const mag = Number(b.magnitude || 0);
+    const rem = Math.max(0, Math.floor(Number(b.remainingSec || 0)));
+
+    // Format: damage: 50% 10s  | radius: 3 8s
+    const val =
+      (type === "gold" || type === "damage")
+        ? `${Math.round(mag * 100)}%`
+        : `${mag}`;
+
+    lines.push(`${type}: ${val} ${rem}s`);
   }
 
   list.innerHTML = lines.map(t => `<div>${t}</div>`).join("");
 }
-
 
 /**
  * Stage-Anzeige aktualisieren.
@@ -77,8 +86,10 @@ export function updateBoostPanel(){
 export function updateStageInfo(stage, markBoss) {
   const el = document.getElementById("stageInfo");
   if (!el) return;
+
   const valid = (typeof stage === "number" && stage > 0);
   const boss = (typeof markBoss === "boolean") ? markBoss : isBossRoundActive();
+
   const base = valid ? `Stage: ${stage}` : "Stage: –";
   el.textContent = boss && valid ? `${base} (Boss)` : base;
 }
@@ -145,8 +156,29 @@ function ensureStageSlot() {
   }
 }
 
+/* ---------- BoostPanel Platzhalter (falls HTML es noch nicht hat) ---------- */
+function ensureBoostPanel() {
+  if (document.getElementById("boostPanel")) return;
+
+  const panel = document.createElement("div");
+  panel.id = "boostPanel";
+
+  const title = document.createElement("div");
+  title.className = "boostTitle";
+  title.textContent = "Booster:";
+
+  const list = document.createElement("div");
+  list.id = "boostList";
+
+  panel.appendChild(title);
+  panel.appendChild(list);
+
+  document.body.appendChild(panel);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   ensureStageSlot();
-  updateStageInfo(); // zeigt "Stage: –" (und ggf. "(Boss)" wenn aktiv und Zahl später gesetzt)
+  ensureBoostPanel();
+  updateStageInfo();     // "Stage: –" initial
+  updateBoostPanel();    // initial render
 });
-
