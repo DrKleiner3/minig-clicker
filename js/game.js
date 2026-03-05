@@ -3,12 +3,12 @@
 // Rundenende speichern → Upgrades. Enthält Boss-Flow + Ring-Cap + Boss-Abbruch-Fix + 3.0-Regen/Boost-Tick.
 // NEU: Start akzeptiert jede phase (paused/…); wird sanft auf "playing" normalisiert.
 
-import { 
-  startTimer, 
-  updateGoldDisplay, 
-  updateLevelInfo, 
+import {
+  startTimer,
+  updateGoldDisplay,
+  updateLevelInfo,
+  updateStageInfo,
   updateBoostPanel,
-  updateStageInfo, 
 } from "./ui.js";
 
 import {
@@ -17,7 +17,6 @@ import {
   upgrades,
   getGold,
   getTimeLeft,
-  setTimeLeft,
   setBiome as setBiomeState,
   getStonesRemaining,
   MAX_RADIUS,
@@ -46,7 +45,6 @@ import {
 import { getBiomeForStage, applyBiome } from "./biom.js";
 import { generateMap } from "./map.js";
 import { autoMine } from "./mining.js";
-import { startTimer, updateGoldDisplay, updateLevelInfo, updateStageInfo } from "./ui.js";
 
 /* ---------------------------------
  * Laufvariablen
@@ -73,10 +71,12 @@ document.addEventListener("mousemove", (e) => {
 function animateRing(radiusCircleEl) {
   const levelRadius = Math.min(Number(upgrades.radius || 0), MAX_RADIUS);
   const radius = TILE_SIZE * (0.5 + 0.2 * levelRadius);
+
   radiusCircleEl.style.left = `${mouseX - radius}px`;
   radiusCircleEl.style.top = `${mouseY - radius}px`;
   radiusCircleEl.style.width = `${radius * 2}px`;
   radiusCircleEl.style.height = `${radius * 2}px`;
+
   rafId = requestAnimationFrame(() => animateRing(radiusCircleEl));
 }
 
@@ -159,7 +159,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // *** NEU: Phase-sanitisierung – immer spielbar machen ***
+  // Phase-sanitisierung – immer spielbar machen
   if (save.phase !== "playing") {
     save.phase = "playing";
     save.startTime = Date.now();
@@ -188,6 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updateGoldDisplay();
   updateLevelInfo();
   updateStageInfo(runStage, isBossRound);
+  updateBoostPanel();
 
   // 5) Map bauen
   window.__mc_isBossRound = isBossRound;
@@ -213,8 +214,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // 8) Boost-/GoldRegen-Tick (Phase 3.0) – nur in Spielwelt
   boostInterval = setInterval(() => {
     if (!gameRunning) return;
-    tickBoostsAndRegen(1);     // 1 Sekunde
-    updateGoldDisplay();       // Gold-Regen sofort sichtbar
+    tickBoostsAndRegen(1);   // 1 Sekunde
+    updateGoldDisplay();     // Gold-Regen sofort sichtbar
+    updateBoostPanel();      // Booster/GoldRegen Panel aktualisieren
   }, BOOST_TICK_MS);
 
   // 9) Ring-Animation
@@ -248,15 +250,13 @@ window.addEventListener("beforeunload", () => {
       save.forceBossRound = false;
       delete save.startTime;
 
-      // 3.0-Patch persistieren
       Object.assign(save, getLevelBoostSavePatch());
 
       localStorage.setItem(slotKey, JSON.stringify(save));
       return;
     }
 
-    // Normaler Pause-Fall (kein Boss) – weiterhin speichern,
-    // aber dank Start-Sanitisierung ist der Slot später trotzdem ladbar.
+    // Normaler Pause-Fall (kein Boss)
     save.phase = "paused";
     save.remainingTime = Math.max(0, getTimeLeft() || 0);
     save.gold = getGold();
@@ -270,8 +270,3 @@ window.addEventListener("beforeunload", () => {
     // ignore
   }
 });
-
-
-
-
-
