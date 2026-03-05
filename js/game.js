@@ -25,6 +25,7 @@ import {
   BOOST_TICK_MS,
   tickBoostsAndRegen,
   getLevelBoostSavePatch,
+   updateBoostPanel,
   resetStonesThisRound,
 } from "./state.js";
 
@@ -269,6 +270,7 @@ window.addEventListener("beforeunload", () => {
     // ignore
   }
 });
+
 
 
 
