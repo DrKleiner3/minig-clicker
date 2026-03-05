@@ -7,6 +7,7 @@ import {
   startTimer, 
   updateGoldDisplay, 
   updateLevelInfo, 
+  updateBoostPanel,
   updateStageInfo, 
 } from "./ui.js";
 
@@ -25,7 +26,6 @@ import {
   BOOST_TICK_MS,
   tickBoostsAndRegen,
   getLevelBoostSavePatch,
-   updateBoostPanel,
   resetStonesThisRound,
 } from "./state.js";
 
@@ -270,6 +270,7 @@ window.addEventListener("beforeunload", () => {
     // ignore
   }
 });
+
 
 
 
