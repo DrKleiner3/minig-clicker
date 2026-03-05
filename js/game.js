@@ -8,7 +8,6 @@ import {
   updateGoldDisplay, 
   updateLevelInfo, 
   updateStageInfo, 
-  updateBoostPanel 
 } from "./ui.js";
 
 import {
@@ -270,5 +269,6 @@ window.addEventListener("beforeunload", () => {
     // ignore
   }
 });
+
 
 
