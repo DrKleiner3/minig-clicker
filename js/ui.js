@@ -1,6 +1,6 @@
 // js/ui.js
 // Statusleisten-Logik: Timer, Gold-, Level- und Stage-Anzeige
-// Phase 3.0: "Steine bis Level-Up" nutzt echten Stein-Progress
+// + Boost Panel (Booster: / Gold Regen:)
 
 import {
   getGold,
@@ -10,7 +10,7 @@ import {
   // Level-Progress
   getStonesToNextLevel,
 
-  // Boost / Regen
+  // Boost/Regen
   getGoldRegenPerSec,
   getActiveBoosts,
 } from "./state.js";
@@ -26,8 +26,16 @@ function isBossRoundActive() {
   return Boolean(window.__mc_isBossRound);
 }
 
-/* ---------- Public API ---------- */
+function insertAfter(newNode, referenceNode) {
+  if (!referenceNode || !referenceNode.parentNode) return;
+  if (referenceNode.nextSibling) {
+    referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+  } else {
+    referenceNode.parentNode.appendChild(newNode);
+  }
+}
 
+/* ---------- Public API ---------- */
 export function updateGoldDisplay() {
   const el = document.getElementById("goldDisplay");
   if (!el) return;
@@ -37,66 +45,31 @@ export function updateGoldDisplay() {
 export function updateLevelInfo() {
   const el = document.getElementById("levelInfo");
   if (!el) return;
-
   const remainingStones = Math.max(0, Math.ceil(getStonesToNextLevel()));
   el.textContent = `Steine bis Level-Up: ${remainingStones}`;
 }
-
-/* ---------- BOOST PANEL ---------- */
-
-export function updateBoostPanel() {
-  const list = document.getElementById("boostList");
-  if (!list) return;
-
-  const regen = getGoldRegenPerSec();
-  const boosts = getActiveBoosts();
-
-  const lines = [];
-  lines.push(`Gold Regen: ${regen}`);
-
-for (const b of boosts) {
-
-  const pct =
-    (b.type === "gold" || b.type === "damage")
-      ? `${Math.round(b.magnitude * 100)}%`
-      : `${b.magnitude}`;
-
-  lines.push(`${b.type}: ${pct} (${b.remainingSec}s)`);
-
-}
-
-  list.innerHTML = lines.map(t => `<div>${t}</div>`).join("");
-}
-
-/* ---------- STAGE INFO ---------- */
 
 export function updateStageInfo(stage, markBoss) {
   const el = document.getElementById("stageInfo");
   if (!el) return;
 
-  const valid = (typeof stage === "number" && stage > 0);
-  const boss = (typeof markBoss === "boolean") ? markBoss : isBossRoundActive();
-
+  const valid = typeof stage === "number" && stage > 0;
+  const boss = typeof markBoss === "boolean" ? markBoss : isBossRoundActive();
   const base = valid ? `Stage: ${stage}` : "Stage: –";
   el.textContent = boss && valid ? `${base} (Boss)` : base;
 }
-
-/* ---------- TIMER ---------- */
 
 export function startTimer(onEnd = () => {}) {
   const timerDisplay = document.getElementById("timer");
   if (!timerDisplay) return;
 
-  // ggf. alten Timer stoppen
   if (window.__mc_timerInterval) {
     clearInterval(window.__mc_timerInterval);
     window.__mc_timerInterval = null;
   }
 
-  // erste Anzeige
   timerDisplay.textContent = `${formatTime(getTimeLeft())}`;
 
-  // Ticker
   window.__mc_timerInterval = setInterval(() => {
     const t = getTimeLeft();
 
@@ -112,18 +85,37 @@ export function startTimer(onEnd = () => {}) {
   }, 1000);
 }
 
-/* ---------- STAGE SLOT AUTO CREATE ---------- */
+/* ---------- Boost Panel ---------- */
+export function updateBoostPanel() {
+  const list = document.getElementById("boostList");
+  if (!list) return;
 
-function insertAfter(newNode, referenceNode) {
-  if (!referenceNode || !referenceNode.parentNode) return;
+  const regen = Number(getGoldRegenPerSec() || 0);
+  const boosts = getActiveBoosts();
 
-  if (referenceNode.nextSibling) {
-    referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
-  } else {
-    referenceNode.parentNode.appendChild(newNode);
+  const lines = [];
+  lines.push(`Gold Regen: ${regen.toFixed(1)}`);
+
+  for (const b of boosts) {
+    const type = String(b.type || "");
+    const rem = Math.max(0, Number(b.remainingSec || 0));
+
+    let val = "";
+    if (type === "gold" || type === "damage") {
+      val = `${Math.round(Number(b.magnitude || 0) * 100)}%`;
+    } else if (type === "radius") {
+      val = `${Number(b.magnitude || 0)}`;
+    } else {
+      val = `${Number(b.magnitude || 0)}`;
+    }
+
+    lines.push(`${type}: ${val} (${rem}s)`);
   }
+
+  list.innerHTML = lines.map(t => `<div>${t}</div>`).join("");
 }
 
+/* ---------- Auto-create HUD slots ---------- */
 function ensureStageSlot() {
   if (document.getElementById("stageInfo")) return;
 
@@ -135,14 +127,9 @@ function ensureStageSlot() {
   stage.textContent = "Stage: –";
 
   const gold = document.getElementById("goldDisplay");
-  if (gold && gold.parentElement === bar) {
-    insertAfter(stage, gold);
-  } else {
-    bar.appendChild(stage);
-  }
+  if (gold && gold.parentElement === bar) insertAfter(stage, gold);
+  else bar.appendChild(stage);
 }
-
-/* ---------- BOOST PANEL AUTO CREATE ---------- */
 
 function ensureBoostPanel() {
   if (document.getElementById("boostPanel")) return;
@@ -159,11 +146,8 @@ function ensureBoostPanel() {
 
   panel.appendChild(title);
   panel.appendChild(list);
-
   document.body.appendChild(panel);
 }
-
-/* ---------- INIT ---------- */
 
 document.addEventListener("DOMContentLoaded", () => {
   ensureStageSlot();
@@ -172,4 +156,3 @@ document.addEventListener("DOMContentLoaded", () => {
   updateStageInfo();
   updateBoostPanel();
 });
-
