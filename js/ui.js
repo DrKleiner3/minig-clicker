@@ -40,6 +40,36 @@ export function updateLevelInfo() {
   el.textContent = `Steine bis Level-Up: ${remainingStones}`;
 }
 
+
+/**
+* Gold Regen Boost
+*/
+
+import { getGoldRegenPerSec, getActiveBoosts } from "./state.js";
+
+export function updateBoostPanel(){
+  const list = document.getElementById("boostList");
+  if(!list) return;
+
+  const regen = getGoldRegenPerSec();
+  const boosts = getActiveBoosts();
+
+  const lines = [];
+  lines.push(`Gold Regen: ${regen}`);
+
+  // optional: aktive Boosts anzeigen
+  for (const b of boosts){
+    // z.B. "gold +50% 8s"
+    const pct = (b.type === "gold" || b.type === "damage")
+      ? `${Math.round(b.magnitude * 100)}%`
+      : `${b.magnitude}`;
+    lines.push(`${b.type}: ${pct} (${b.remainingSec}s)`);
+  }
+
+  list.innerHTML = lines.map(t => `<div>${t}</div>`).join("");
+}
+
+
 /**
  * Stage-Anzeige aktualisieren.
  * Wenn gerade eine Boss-Runde aktiv ist, wird "(Boss)" angehängt.
@@ -119,3 +149,4 @@ document.addEventListener("DOMContentLoaded", () => {
   ensureStageSlot();
   updateStageInfo(); // zeigt "Stage: –" (und ggf. "(Boss)" wenn aktiv und Zahl später gesetzt)
 });
+
