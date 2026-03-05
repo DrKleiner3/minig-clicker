@@ -1,230 +1,428 @@
 /* ================================
-Allgemeines Design / Base
+   BASE / GENERAL
 ================================ */
-body{
-background-color:#111;
-color:white;
-font-family:Arial,sans-serif;
-margin:0;
-padding:0;
-text-align:center;
-position:relative;
-overflow:hidden;
-}
 
-/* Biome-Hintergründe */
-body[data-biome="default"]{background:#111;}
-body[data-biome="cave"]{background:#222;}
-body[data-biome="lava"]{background:#441111;}
+body{
+  background:#111;
+  color:white;
+  font-family:Arial, sans-serif;
+  margin:0;
+  padding:0;
+  text-align:center;
+  overflow:hidden;
+  position:relative;
+}
 
 /* ================================
-GAME: Statusbar
+   PAGE BACKGROUNDS
 ================================ */
-body[data-page="game"] .statusbar{
-display:flex;
-justify-content:center;
-align-items:center;
-gap:26px;
-width:100%;
-font-size:1.6rem;
+
+body[data-page="index"]{
+  background:url("../assets/backgrounds/indexbackground.png") center/cover no-repeat fixed;
 }
 
-body[data-page="game"] .statusbar span{
-position:relative;
-padding-left:32px;
-font-weight:600;
-text-shadow:1px 1px 2px #000,0 0 6px rgba(0,0,0,.35);
+body[data-page="upgrades"]{
+  background:url("../assets/backgrounds/upgradebackground.png") center/cover no-repeat fixed;
 }
 
-body[data-page="game"] .statusbar span::before{
-content:"";
-position:absolute;
-left:6px;
-top:50%;
-width:22px;
-height:22px;
-transform:translateY(-50%);
-background-size:contain;
-background-repeat:no-repeat;
+body[data-page="game"]{
+  background:#111;
+}
+
+/* ================================
+   BIOME BACKGROUNDS
+================================ */
+
+body[data-biome="gras"]{
+  background:url("../assets/backgrounds/grasbackground.png") center/cover no-repeat fixed;
+}
+
+body[data-biome="dirt"]{
+  background:url("../assets/backgrounds/dirtbackground.png") center/cover no-repeat fixed;
+}
+
+body[data-biome="stone"],
+body[data-biome="cave"]{
+  background:url("../assets/backgrounds/stonebackground.png") center/cover no-repeat fixed;
+}
+
+body[data-biome="lava"]{
+  background:url("../assets/backgrounds/lavabackground.png") center/cover no-repeat fixed;
+}
+
+body[data-biome="dungeon"]{
+  background:url("../assets/backgrounds/dungeonbackground.png") center/cover no-repeat fixed;
+}
+
+body[data-biome="crystal"]{
+  background:url("../assets/backgrounds/crystalbackground.png") center/cover no-repeat fixed;
+}
+
+body[data-biome="ice"]{
+  background:url("../assets/backgrounds/icebackground.png") center/cover no-repeat fixed;
+}
+
+/* ================================
+   STATUS BAR
+================================ */
+
+.statusbar{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:28px;
+  font-size:1.6rem;
+  margin-top:15px;
+}
+
+.statusbar span{
+  position:relative;
+  padding-left:32px;
+  font-weight:600;
+}
+
+.statusbar span::before{
+  content:"";
+  position:absolute;
+  left:5px;
+  top:50%;
+  transform:translateY(-50%);
+  width:22px;
+  height:22px;
+  background-size:contain;
+  background-repeat:no-repeat;
 }
 
 /* Icons */
-body[data-page="game"] #timer::before{
-background-image:url("../assets/ui/timer.png");
+
+#timer::before{
+  background-image:url("../assets/ui/timer.png");
 }
-body[data-page="game"] #goldDisplay::before{
-background-image:url("../assets/ui/Gold.png");
+
+#goldDisplay::before{
+  background-image:url("../assets/ui/Gold.png");
 }
-body[data-page="game"] #levelInfo::before{
-background-image:url("../assets/ui/levelup.png");
+
+#levelInfo::before{
+  background-image:url("../assets/ui/levelup.png");
 }
-body[data-page="game"] #stageInfo::before{
-background-image:url("../assets/ui/stage.png");
-width:28px;
-height:28px;
+
+#stageInfo{
+  padding-left:40px;
+  font-weight:700;
+}
+
+#stageInfo::before{
+  width:26px;
+  height:26px;
+  background-image:url("../assets/ui/stage.png");
 }
 
 /* Reihenfolge */
-body[data-page="game"] #timer{order:1;}
-body[data-page="game"] #goldDisplay{order:2;}
-body[data-page="game"] #stageInfo{order:3;}
-body[data-page="game"] #levelInfo{order:4;}
+
+#timer{order:1;}
+#goldDisplay{order:2;}
+#stageInfo{order:3;}
+#levelInfo{order:4;}
 
 /* ================================
-Spielfeld
+   GAME GRID
 ================================ */
+
 #game{
-display:grid;
 
-/* Breite bleibt 12 Tiles */
-grid-template-columns:repeat(12,64px);
+  display:grid;
 
-/* Reihen dynamisch (MAP_HEIGHT aus JS) */
-grid-template-rows:none;
-grid-auto-rows:64px;
+  grid-template-columns:repeat(12,64px);
+  grid-auto-rows:64px;
 
-width:768px;
-height:auto;
-
-margin:60px auto 0 auto;
-position:relative;
-
-padding-bottom:12px;
-
-overflow:visible;
+  width:768px;
+  margin:60px auto 0 auto;
+  position:relative;
 }
 
 .tile{
-box-sizing:border-box;
-position:relative;
+  position:relative;
+  box-sizing:border-box;
+  filter:brightness(.85);
 }
 
 .stone,
 .boss{
-width:64px;
-height:64px;
-background-size:cover;
-position:relative;
+  width:64px;
+  height:64px;
+  background-size:cover;
+  position:relative;
 }
 
-/* HP Bar */
+/* HP BAR */
+
 .hp-bar{
-position:absolute;
-bottom:0;
-left:0;
-width:100%;
-height:6px;
-background-color:lime;
+  position:absolute;
+  bottom:0;
+  left:0;
+  height:6px;
+  background:lime;
+  width:100%;
 }
 
 /* ================================
-Mining Radius Ring
+   RING
 ================================ */
+
 #radiusCircle{
-position:absolute;
-pointer-events:none;
-background-image:url("../assets/ring/miningring.png");
-background-size:contain;
-background-repeat:no-repeat;
-width:128px;
-height:128px;
-z-index:10;
-opacity:.9;
+
+  position:absolute;
+  pointer-events:none;
+
+  background-image:url("../assets/ring/miningring.png");
+  background-size:contain;
+  background-repeat:no-repeat;
+
+  width:128px;
+  height:128px;
+
+  z-index:10;
+  opacity:.9;
+
+  animation:
+  ringGlow 3s ease-in-out infinite,
+  ringRotate 10s linear infinite,
+  ringPulse 2s ease-in-out infinite;
+}
+
+@keyframes ringGlow{
+
+  0%,100%{filter:drop-shadow(0 0 6px lime);}
+  50%{filter:drop-shadow(0 0 16px limegreen);}
+
+}
+
+@keyframes ringRotate{
+
+  from{transform:rotate(0deg);}
+  to{transform:rotate(360deg);}
+
+}
+
+@keyframes ringPulse{
+
+  0%,100%{transform:scale(1);}
+  50%{transform:scale(1.05);}
+
 }
 
 /* ================================
-Boost Panel
+   RARE STONE EFFECT
 ================================ */
+
+.stone.rare{
+  animation:rareGlow 1.2s ease-in-out infinite alternate;
+  box-shadow:0 0 10px gold;
+}
+
+@keyframes rareGlow{
+
+  from{filter:brightness(1);}
+  to{filter:brightness(1.5);}
+
+}
+
+/* ================================
+   PARTICLES
+================================ */
+
+.particle{
+
+  position:absolute;
+  width:8px;
+  height:8px;
+
+  background:rgba(255,255,0,.8);
+  border-radius:50%;
+
+  pointer-events:none;
+}
+
+.fly-gold{
+
+  position:absolute;
+  width:16px;
+  height:16px;
+
+  background:gold;
+  border-radius:50%;
+
+  z-index:999;
+}
+
+/* ================================
+   BOOST PANEL
+================================ */
+
 #boostPanel{
-position:fixed;
-right:16px;
-top:120px;
-width:220px;
-color:#fff;
-font-size:16px;
-z-index:9999;
-pointer-events:none;
+
+  position:fixed;
+
+  right:18px;
+  top:110px;
+
+  width:220px;
+
+  font-size:16px;
+
+  color:white;
+
+  pointer-events:none;
 }
 
 #boostPanel .boostTitle{
-font-weight:700;
-margin-bottom:6px;
+
+  font-weight:700;
+  margin-bottom:6px;
 }
 
 #boostList div{
-margin:3px 0;
+  margin:3px 0;
 }
 
 /* ================================
-Effekte
+   INDEX SLOT SYSTEM
 ================================ */
-@keyframes shake{
-0%,100%{transform:translate(0,0)}
-25%{transform:translate(1px,-1px)}
-50%{transform:translate(-1px,1px)}
-75%{transform:translate(1px,1px)}
-}
 
-.stone.rare{
-box-shadow:0 0 10px gold;
-}
-
-/* ================================
-Slots (Index)
-================================ */
 .slot-container{
-display:flex;
-flex-direction:column;
-align-items:center;
-gap:28px;
-margin-top:40px;
+
+  display:flex;
+  flex-direction:column;
+
+  align-items:center;
+
+  gap:28px;
+
+  margin-top:40px;
 }
 
-.slot-card{
-background:#111;
-border:2px dashed #666;
-border-radius:10px;
-padding:20px;
-width:250px;
+.slot{
+
+  position:relative;
+
+  width:450px;
+  height:170px;
+
+  border-radius:10px;
+
+  overflow:hidden;
+}
+
+.slot::before{
+
+  content:"";
+
+  position:absolute;
+  inset:0;
+
+  background:url("../assets/logo/speicherplatzrahmen.png") center/100% 100% no-repeat;
+}
+
+.slot-info{
+
+  position:absolute;
+
+  left:26px;
+  top:50%;
+
+  transform:translateY(-50%);
+
+  width:220px;
+
+  text-align:left;
+}
+
+.slot-actions{
+
+  position:absolute;
+
+  left:256px;
+  top:50%;
+
+  transform:translateY(-50%);
+
+  width:140px;
+
+  display:flex;
+  flex-direction:column;
+
+  gap:6px;
+}
+
+.slot-actions button{
+
+  width:100%;
+
+  padding:6px 10px;
+
+  background:#2f2f2f;
+  color:white;
+
+  border:2px solid #555;
+  border-radius:6px;
+
+  font-weight:700;
+
+  cursor:pointer;
+}
+
+.slot-actions button:hover{
+
+  background:#3b3b3b;
 }
 
 /* ================================
-Upgrades
+   UPGRADE GRID
 ================================ */
+
 .upgrade-grid{
-display:grid;
-grid-template-columns:repeat(4,180px);
-gap:45px;
-justify-content:center;
-margin:40px auto;
+
+  display:grid;
+
+  grid-template-columns:repeat(4,180px);
+
+  gap:45px;
+
+  justify-content:center;
+
+  margin:40px auto;
 }
 
-.upgrade-grid button{
-width:180px;
-height:180px;
-border-radius:16px;
-background:#333;
-border:2px solid #555;
-color:white;
-font-weight:800;
-cursor:pointer;
+.upgrade-card{
+
+  width:180px;
+  height:180px;
+
+  border-radius:16px;
+
+  background:rgba(30,30,30,.9);
+
+  display:flex;
+  flex-direction:column;
+
+  justify-content:center;
+  align-items:center;
+
+  text-align:center;
+
+  font-weight:800;
+
+  cursor:pointer;
+
+  border:2px solid rgba(255,255,255,.08);
 }
 
-.upgrade-grid button:hover{
-transform:translateY(-4px);
-box-shadow:0 0 20px rgba(255,215,0,.6);
-}
+.upgrade-card:hover{
 
-/* ================================
-Index Background
-================================ */
-body[data-page="index"]{
-background:url("../assets/backgrounds/indexbackground.png") center/cover no-repeat fixed;
-}
+  transform:translateY(-5px);
 
-/* ================================
-Upgrade Background
-================================ */
-body[data-page="upgrades"]{
-background:url("../assets/backgrounds/upgradebackground.png") center/cover no-repeat fixed;
+  border-color:gold;
+
+  box-shadow:0 0 20px gold;
 }
