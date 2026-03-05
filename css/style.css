@@ -569,10 +569,31 @@ body[data-page="game"] .statusbar {
 body[data-page="game"] .statusbar > span {
   flex: 0 0 auto;
 }
+/* Boost Panel */
+#boostPanel{
+  position: fixed;
+  right: 16px;
+  top: 120px;   /* je nach deinem HUD */
+  width: 220px;
+  font-size: 16px;
+  color: #fff;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+#boostPanel .boostTitle{
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+#boostList div{
+  margin: 3px 0;
+}
 
 /* Reihenfolge: Timer | Gold | Stage | Level */
 body[data-page="game"] #timer      { order: 1; }
 body[data-page="game"] #goldDisplay{ order: 2; }
 body[data-page="game"] #stageInfo  { order: 3; }  /* rechts von Gold */
 body[data-page="game"] #levelInfo  { order: 4; }
+
 
