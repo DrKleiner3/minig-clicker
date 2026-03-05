@@ -74,11 +74,13 @@ body[data-page="game"] #stageInfo::before {
 #game {
   display: grid;
   grid-template-columns: repeat(12, 64px);
-  grid-template-rows: repeat(13, 64px);
-  margin: 60px auto 0 auto; /* etwas weiter nach unten versetzt */
+  /* grid-template-rows: repeat(13, 64px);  <-- RAUS */
+  grid-auto-rows: 64px;              /* <-- NEU */
+  margin: 60px auto 0 auto;
   position: relative;
-  width: 768px;   /* 12 × 64 */
-  height: 832px;  /* 13 × 64 */
+  width: 768px;                      /* 12 × 64 */
+  height: auto;                      /* <-- NEU */
+  padding-bottom: 10px;              /* optional: Platz für HP-Bar */
 }
 
 .tile {
@@ -573,3 +575,4 @@ body[data-page="game"] #timer      { order: 1; }
 body[data-page="game"] #goldDisplay{ order: 2; }
 body[data-page="game"] #stageInfo  { order: 3; }  /* rechts von Gold */
 body[data-page="game"] #levelInfo  { order: 4; }
+
