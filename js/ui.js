@@ -54,14 +54,16 @@ export function updateBoostPanel() {
   const lines = [];
   lines.push(`Gold Regen: ${regen}`);
 
-  for (const b of boosts) {
-    const pct =
-      (b.type === "gold" || b.type === "damage")
-        ? `${Math.round(b.magnitude * 100)}%`
-        : `${b.magnitude}`;
+for (const b of boosts) {
 
-    lines.push(`${b.type}: ${pct} (${b.remainingSec}s)`);
-  }
+  const pct =
+    (b.type === "gold" || b.type === "damage")
+      ? `${Math.round(b.magnitude * 100)}%`
+      : `${b.magnitude}`;
+
+  lines.push(`${b.type}: ${pct} (${b.remainingSec}s)`);
+
+}
 
   list.innerHTML = lines.map(t => `<div>${t}</div>`).join("");
 }
@@ -170,3 +172,4 @@ document.addEventListener("DOMContentLoaded", () => {
   updateStageInfo();
   updateBoostPanel();
 });
+
