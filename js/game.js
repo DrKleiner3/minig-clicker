@@ -3,6 +3,14 @@
 // Rundenende speichern → Upgrades. Enthält Boss-Flow + Ring-Cap + Boss-Abbruch-Fix + 3.0-Regen/Boost-Tick.
 // NEU: Start akzeptiert jede phase (paused/…); wird sanft auf "playing" normalisiert.
 
+import { 
+  startTimer, 
+  updateGoldDisplay, 
+  updateLevelInfo, 
+  updateStageInfo, 
+  updateBoostPanel 
+} from "./ui.js";
+
 import {
   TILE_SIZE,
   AOE_INTERVAL_MS,
@@ -17,6 +25,7 @@ import {
   // Phase 3.0 – Level/Boost
   BOOST_TICK_MS,
   tickBoostsAndRegen,
+  updateBoostPanel,
   getLevelBoostSavePatch,
   resetStonesThisRound,
 } from "./state.js";
@@ -262,3 +271,4 @@ window.addEventListener("beforeunload", () => {
     // ignore
   }
 });
+
